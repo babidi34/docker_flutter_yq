@@ -1,3 +1,11 @@
+variables:
+  DOCKER_BUILDKIT: '1'
+  DOCKER_REGISTRY: $CI_REGISTRY_IMAGE
+  FF_DISABLE_UMASK_FOR_DOCKER_EXECUTOR: '1'
+  IMAGE_TAG: $CI_COMMIT_SHORT_SHA
+  IMAGE_TAG_LATEST: latest
+
+
 stages:
   - build
 
@@ -6,9 +14,20 @@ build_image:
   image: docker:latest
   services:
     - docker:dind
+  before_script:
+    - docker --version
+    - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
-    - docker build -t registry.gitlab.com/your-namespace/your-project-name/your-image-name:latest .
-    - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
-    - docker push registry.gitlab.com/your-namespace/your-project-name/your-image-name:latest
+    # For caching purposes
+    - docker pull $IMAGE_STAGE_BASE || true
+    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $DOCKER_REGISTRY --tag $DOCKER_REGISTRY:latest .
+    - docker push $DOCKER_REGISTRY
+    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 --cache-from $DOCKER_REGISTRY --tag $DOCKER_REGISTRY:latest .
+    - docker push $DOCKER_REGISTRY:latest
+    # Official Image Release
+    - docker build --build-arg BUILDKIT_INLINE_CACHE=1 -t $DOCKER_REGISTRY:$IMAGE_TAG .
+    - docker tag $DOCKER_REGISTRY:$IMAGE_TAG $DOCKER_REGISTRY:${IMAGE_TAG_LATEST:-latest}
+    - docker push $DOCKER_REGISTRY:$IMAGE_TAG
+    - docker push $DOCKER_REGISTRY:${IMAGE_TAG_LATEST:-latest}
   only:
     - master
