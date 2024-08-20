@@ -4,7 +4,7 @@ FROM ghcr.io/cirruslabs/flutter:3.22.2
 ENV yq_version 4.44.3
 # Étape 2 : Installer curl et yq
 RUN apt-get update && \
-    apt-get install -y curl && \
+    apt-get install -y curl rsync && \
     curl -sSLo /usr/local/bin/yq https://github.com/mikefarah/yq/releases/download/v$yq_version/yq_linux_amd64 && \
     chmod +x /usr/local/bin/yq
 
